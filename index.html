@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>E-Voting Pemilihan OSIS</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- HTML5 QR Code Scanner -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript" defer></script>
+    
+    <!-- PENGAMAN DARURAT ANTI-LOADING MACET -->
+    <script>
+        setTimeout(function() {
+            var loader = document.getElementById('initial-loader');
+            var login = document.getElementById('view-login');
+            if (loader && !loader.classList.contains('hidden')) {
+                loader.classList.add('hidden');
+                if (login && !sessionStorage.getItem('votingUser')) login.classList.remove('hidden');
+            }
+        }, 3000);
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        body, html {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            margin: 0; padding: 0;
+            background-color: #f8fafc;
+        }
+
+        /* OVERRIDE MAKSIMAL UNTUK BLOGGER FULLSCREEN (Memastikan Layout Rapi) */
+        .blogger-fullscreen-override {
+            position: fixed !important;
+            top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+            width: 100vw !important; height: 100vh !important;
+            z-index: 2147483647 !important;
+            margin: 0 !important; padding: 0 !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
+        }
+        
+        .modal-bg { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
+        .loader {
+            border: 4px solid #e2e8f0; border-top: 4px solid #3b82f6;
+            border-radius: 50%; width: 40px; height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hidden { display: none !important; }
+        
+        .progress-bar-bg { background-color: #e2e8f0; border-radius: 9999px; overflow: hidden; height: 1rem; width: 100%; }
+        .progress-bar-fill { background-color: #3b82f6; height: 100%; transition: width 0.8s ease; }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Desain Khusus UI Scanner QR Code */
+        #qr-reader { border: none !important; border-radius: 1rem; padding: 0 !important; width: 100%; }
+        #qr-reader img { margin: auto; }
+        #qr-reader__dashboard_section_csr span, #qr-reader__dashboard_section_csr a { color: #0f172a !important; font-weight: bold; text-decoration: none; font-size: 14px; }
+        #html5-qrcode-anchor-scan-type-change { display: none !important; }
+        #html5-qrcode-button-camera-permission, 
+        #html5-qrcode-button-camera-start, 
+        #html5-qrcode-button-camera-stop {
+            background-color: #3b82f6 !important; color: white !important; border: none !important; padding: 12px 24px !important; 
+            border-radius: 0.75rem !important; font-weight: bold !important; cursor: pointer !important; margin: 15px auto !important; 
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5); transition: 0.3s; width: 100%; font-size: 16px !important;
+        }
+        #html5-qrcode-button-camera-permission:hover, #html5-qrcode-button-camera-start:hover { background-color: #2563eb !important; }
+    </style>
+</head>
+<body class="text-gray-700 antialiased">
+
+<!-- LOADING AWAL -->
+<div id="initial-loader" class="blogger-fullscreen-override bg-[#f8fafc] flex flex-col items-center justify-center z-[2147483649]">
+    <div class="loader mb-4"></div>
+    <h3 class="text-lg font-bold text-[#0f172a]">Memuat Sistem E-Voting...</h3>
+</div>
+
+<!-- HALAMAN LOGIN -->
+<div id="view-login" class="hidden blogger-fullscreen-override bg-[#f8fafc] flex items-center justify-center p-4 z-[2147483648]">
+    <div class="bg-white p-8 rounded-[2rem] shadow-2xl max-w-md w-full border border-gray-100 overflow-y-auto max-h-[95vh] custom-scrollbar">
+        <div class="text-center mb-8">
+            <div class="w-24 h-24 mx-auto bg-gray-50 rounded-full flex items-center justify-center p-2 mb-4 border border-gray-100 shadow-sm overflow-hidden">
+                <img id="login-logo" src="https://upload.wikimedia.org/wikipedia/commons/9/9f/Tut_Wuri_Handayani.svg" alt="Logo" class="w-full h-full object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/9/9f/Tut_Wuri_Handayani.svg'">
+            </div>
+            <h1 class="text-2xl font-extrabold text-[#0f172a]">E-Voting OSIS</h1>
+            <p id="login-school-name" class="text-sm font-semibold text-blue-600 mt-1">Memuat data sekolah...</p>
+            <p class="text-sm text-gray-400 mt-2">Silakan login menggunakan identitas Anda</p>
+            
+            <div id="preview-badge" class="mt-3 text-xs font-bold text-orange-600 bg-orange-100 inline-block px-3 py-1 rounded-full hidden">
+                <i class="fas fa-eye mr-1"></i> MODE PREVIEW AKTIF
+            </div>
+        </div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="mb-5">
+                <label class="block text-gray-700 text-sm font-bold mb-2">NISN / Admin</label>
+                <input class="w-full bg-gray-50 text-gray-800 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" id="username" type="text" placeholder="Masukkan NISN / Admin" required>
+            </div>
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Token / Password</label>
+                <input class="w-full bg-gray-50 text-gray-800 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" id="password" type="password" placeholder="Masukkan Token / Password" required>
+            </div>
+            <button class="bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold py-3.5 px-4 rounded-xl w-full transition shadow-lg flex items-center justify-center" type="submit" id="btnLogin">
+                <i class="fas fa-sign-in-alt mr-2"></i> Masuk Aplikasi
+            </button>
+            
+            <div class="mt-6 flex items-center justify-between">
+                <hr class="w-full border-gray-200">
+                <span class="px-3 text-gray-400 text-xs font-bold tracking-wider">ATAU</span>
+                <hr class="w-full border-gray-200">
+            </div>
+            
+            <button type="button" onclick="openScanner()" class="mt-6 bg-[#0f172a] hover:bg-[#1e293b] text-white font-bold py-3.5 px-4 rounded-xl w-full transition shadow-lg flex items-center justify-center">
+                <i class="fas fa-qrcode mr-2 text-lg"></i> Scan QR Code Kartu
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- LAYOUT UTAMA SEJAJAR -->
+<div id="app-layout" class="hidden blogger-fullscreen-override bg-[#0f172a]">
+    
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-gray-900/50 z-[2147483648] hidden md:hidden"></div>
+
+    <!-- SIDEBAR KIRI (Tetap di kiri, tidak merosot) -->
+    <aside id="sidebar" class="fixed top-0 bottom-0 left-0 z-[2147483649] w-[280px] bg-[#0f172a] text-gray-300 flex flex-col transition-transform transform -translate-x-full md:translate-x-0 overflow-y-auto custom-scrollbar">
+        <div class="pt-10 pb-6 px-6 flex flex-col items-center border-b border-white/10 shrink-0">
+            <div class="w-20 h-20 rounded-full overflow-hidden bg-white p-1 mb-3 shadow-xl ring-4 ring-white/10">
+                <img id="nav-logo" src="" alt="Logo" class="w-full h-full object-contain rounded-full bg-white" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/9/9f/Tut_Wuri_Handayani.svg'">
+            </div>
+            <h2 id="nav-school-name" class="font-bold text-white text-lg text-center leading-tight">Nama Sekolah</h2>
+            <p id="nav-user-name" class="text-sm text-blue-300 mt-2 truncate max-w-full px-2">Halo, User</p>
+            <p id="nav-user-class" class="text-xs text-gray-400 mt-1"></p>
+            <span id="nav-role-badge" class="mt-2 text-xs py-1 px-3 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase tracking-wider">Role</span>
+        </div>
+
+        <nav id="menu-admin" class="flex-1 px-4 py-6 space-y-2 hidden shrink-0">
+            <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Menu Utama</p>
+            <a onclick="switchMenu('manage')" id="menu-item-manage" class="sidebar-menu cursor-pointer flex items-center px-4 py-3 rounded-xl hover:bg-white/10 transition-all">
+                <i class="fas fa-users-cog w-6 text-center mr-3 text-lg"></i> <span class="font-medium">Kandidat</span>
+            </a>
+            <a onclick="switchMenu('voters')" id="menu-item-voters" class="sidebar-menu cursor-pointer flex items-center px-4 py-3 rounded-xl hover:bg-white/10 transition-all">
+                <i class="fas fa-user-graduate w-6 text-center mr-3 text-lg"></i> <span class="font-medium">Data Pemilih</span>
+            </a>
+            <a onclick="switchMenu('results')" id="menu-item-results" class="sidebar-menu cursor-pointer flex items-center px-4 py-3 rounded-xl hover:bg-white/10 transition-all">
+                <i class="fas fa-chart-pie w-6 text-center mr-3 text-lg"></i> <span class="font-medium">Hasil Suara</span>
+            </a>
+            
+            <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mt-6 mb-2">Sistem</p>
+            <a onclick="switchMenu('settings')" id="menu-item-settings" class="sidebar-menu cursor-pointer flex items-center px-4 py-3 rounded-xl hover:bg-white/10 transition-all">
+                <i class="fas fa-cog w-6 text-center mr-3 text-lg"></i> <span class="font-medium">Pengaturan</span>
+            </a>
+        </nav>
+
+        <nav id="menu-voter" class="flex-1 px-4 py-6 space-y-2 hidden shrink-0">
+            <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Bilik Suara</p>
+            <a onclick="switchMenu('dashboard-voter')" id="menu-item-dashboard-voter" class="sidebar-menu cursor-pointer flex items-center px-4 py-3 rounded-xl hover:bg-white/10 transition-all">
+                <i class="fas fa-person-booth w-6 text-center mr-3 text-lg"></i> <span class="font-medium">Daftar Kandidat</span>
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-white/10 shrink-0">
+            <a onclick="logout()" class="cursor-pointer flex items-center px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all">
+                <i class="fas fa-sign-out-alt w-6 text-center mr-3 text-lg"></i> <span class="font-medium">Keluar Aplikasi</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- KONTEN UTAMA KANAN (Posisi Absolut Presisi menghindari Sidebar) -->
+    <main class="fixed top-0 right-0 bottom-0 left-0 md:left-[280px] z-[2147483648] bg-[#f8fafc] md:rounded-l-3xl shadow-2xl flex flex-col overflow-hidden">
+        
+        <!-- Header Mobile (Hanya tampil di HP) -->
+        <header class="md:hidden bg-white shadow-sm h-16 flex items-center justify-between px-4 shrink-0 relative z-20">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="text-[#0f172a] hover:bg-gray-100 p-2 rounded-lg transition">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <span id="mobile-header-title" class="font-bold text-[#0f172a] text-lg truncate">Dashboard</span>
+            </div>
+            <img id="mobile-nav-logo" src="" alt="Logo" class="w-8 h-8 rounded-full border bg-white object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/9/9f/Tut_Wuri_Handayani.svg'">
+        </header>
+
+        <!-- Area Kotak Putih Utama -->
+        <div class="flex-1 w-full h-full bg-[#f8fafc] flex flex-col relative overflow-hidden">
+            
+            <!-- HEADER HALAMAN (Desktop) -->
+            <div class="hidden md:flex justify-between items-start p-6 lg:p-8 bg-white border-b border-gray-100 shrink-0 z-10">
+                <div>
+                    <h1 id="page-title" class="text-2xl lg:text-3xl font-extrabold text-[#0f172a]">Dashboard</h1>
+                    <p id="page-subtitle" class="text-gray-500 text-sm mt-1">Selamat datang di Sistem Pemilihan OSIS.</p>
+                </div>
+                <div class="bg-gray-50 px-5 py-2.5 rounded-xl border border-gray-100 flex items-center text-gray-500">
+                    <i class="fas fa-calendar-alt mr-2 text-blue-500"></i>
+                    <span class="text-sm font-semibold" id="current-date"></span>
+                </div>
+            </div>
+
+            <!-- AREA SCROLL KONTEN -->
+            <div class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 custom-scrollbar relative z-0">
+                
+                <!-- VIEW: PEMILIH -->
+                <div id="view-voter" class="hidden">
+                    <div id="voter-status-alert" class="mb-8 p-5 rounded-2xl text-center shadow-sm border"></div>
+                    <div id="voter-candidate-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                </div>
+
+                <!-- VIEW: ADMIN MANAJEMEN KANDIDAT -->
+                <div id="view-manage" class="hidden space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2 bg-white p-4 rounded-2xl shadow-sm">
+                        <h3 class="text-xl font-bold text-[#0f172a]">Data Pasangan Kandidat</h3>
+                        <button onclick="openAddCandidateModal()" class="bg-[#3b82f6] hover:bg-[#2563eb] text-white py-2.5 px-5 rounded-xl shadow-lg transition flex items-center font-medium">
+                            <i class="fas fa-plus mr-2"></i> Tambah Kandidat
+                        </button>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-100">
+                                <thead class="bg-gray-50/50">
+                                    <tr>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase">No</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase">Kandidat</th>
+                                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-candidate-list" class="divide-y divide-gray-100 bg-white"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: ADMIN DATA PEMILIH (DPT) & CETAK -->
+                <div id="view-voters" class="hidden space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2 bg-white p-4 rounded-2xl shadow-sm">
+                        <h3 class="text-xl font-bold text-[#0f172a]">Daftar Hak Suara (DPT)</h3>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <button onclick="printAllVoterCards()" class="bg-indigo-500 hover:bg-indigo-600 text-white py-2.5 px-5 rounded-xl shadow-lg transition flex items-center justify-center font-medium">
+                                <i class="fas fa-print mr-2"></i> Cetak Semua
+                            </button>
+                            <button onclick="openAddVoterModal()" class="bg-[#3b82f6] hover:bg-[#2563eb] text-white py-2.5 px-5 rounded-xl shadow-lg transition flex items-center justify-center font-medium">
+                                <i class="fas fa-user-plus mr-2"></i> Tambah Pemilih
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-100">
+                                <thead class="bg-gray-50/50">
+                                    <tr>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase">NISN</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase">Nama & Kelas</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase">Token</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase">Role</th>
+                                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase">Status</th>
+                                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-voter-list" class="divide-y divide-gray-100 bg-white"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: ADMIN HASIL SUARA -->
+                <div id="view-results" class="hidden space-y-6">
+                    <div class="flex justify-between items-center mb-2 bg-white p-4 rounded-2xl shadow-sm">
+                        <h3 class="text-xl font-bold text-[#0f172a]">Perolehan Suara Real-time</h3>
+                        <button onclick="loadAdminResults()" class="bg-blue-50 text-blue-600 hover:bg-blue-100 py-2.5 px-5 rounded-xl transition font-medium flex items-center">
+                            <i class="fas fa-sync-alt mr-2"></i> Muat Ulang
+                        </button>
+                    </div>
+                    
+                    <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 mb-2">
+                        <div class="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-[#3b82f6] text-2xl">
+                            <i class="fas fa-inbox"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-500">Total Suara Masuk</p>
+                            <p id="stat-total-votes" class="text-3xl font-extrabold text-[#0f172a]">0</p>
+                        </div>
+                    </div>
+
+                    <div id="admin-results-container" class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-8"></div>
+                </div>
+
+                <!-- VIEW: ADMIN PENGATURAN -->
+                <div id="view-settings" class="hidden space-y-6">
+                    <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <h4 class="font-bold text-[#0f172a] text-xl">Status Sesi Pemilihan</h4>
+                                <p class="text-sm text-gray-500 mt-1">Buka atau tutup akses login dan voting bagi pemilih.</p>
+                            </div>
+                            <div>
+                                <button id="btn-toggle-election" onclick="toggleElectionStatus()" class="px-8 py-3 rounded-xl font-bold text-white transition shadow-lg w-full md:w-auto">
+                                    Loading...
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                        <h4 class="font-bold text-[#0f172a] text-xl mb-6">Identitas & Tampilan Sekolah</h4>
+                        <form id="form-school-identity" onsubmit="saveSchoolIdentity(event)">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">Nama Sekolah</label>
+                                    <input id="setting-school-name" type="text" class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50" required>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">Alamat Sekolah</label>
+                                    <input id="setting-school-address" type="text" class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50" required>
+                                </div>
+                            </div>
+                            <div class="mb-6">
+                                <label class="block text-gray-700 text-sm font-bold mb-2">URL Logo Sekolah</label>
+                                <input id="setting-school-logo" type="url" class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50" placeholder="https://..." required>
+                            </div>
+                            <div class="flex justify-end pt-4 border-t border-gray-100">
+                                <button type="submit" class="bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold py-3 px-8 rounded-xl shadow-lg transition">Simpan Perubahan</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- MODAL: SCANNER QR CODE -->
+<div id="modal-scanner" class="fixed inset-0 z-[2147483650] hidden flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-sm">
+    <div class="bg-white rounded-[2rem] shadow-2xl z-10 w-full max-w-md overflow-hidden relative flex flex-col">
+        <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+            <h3 class="font-bold text-lg text-[#0f172a] flex items-center"><i class="fas fa-camera mr-2 text-blue-500"></i> Scan Kartu QR</h3>
+            <button onclick="closeScanner()" class="text-gray-400 hover:text-red-500 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm transition"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-6 flex flex-col items-center justify-center bg-white min-h-[300px]">
+            <div id="qr-reader" class="w-full overflow-hidden"></div>
+            <p class="text-sm text-gray-500 mt-4 text-center border-t border-gray-100 pt-4 w-full">Tekan <b>"Request Camera Permissions / Allow"</b> pada Pop-up browser jika diminta.</p>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: DETAIL KANDIDAT & VOTE -->
+<div id="modal-candidate" class="fixed inset-0 z-[2147483650] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 modal-bg" onclick="closeModal('modal-candidate')"></div>
+    <div class="bg-white rounded-[2rem] shadow-2xl z-10 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col md:flex-row transform transition-all relative">
+        <button onclick="closeModal('modal-candidate')" class="absolute top-4 right-4 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full w-10 h-10 flex items-center justify-center z-20 transition"><i class="fas fa-times"></i></button>
+        
+        <div class="md:w-2/5 bg-gray-50 flex flex-col items-center justify-center p-8 border-b md:border-b-0 md:border-r border-gray-100 relative">
+            <div class="absolute top-6 left-6 bg-[#3b82f6] text-white font-bold w-12 h-12 flex items-center justify-center rounded-xl text-xl shadow-lg">
+                #<span id="modal-no-urut"></span>
+            </div>
+            <div class="w-40 h-40 md:w-56 md:h-56 rounded-full overflow-hidden border-8 border-white shadow-xl mt-4 mb-6">
+                <img id="modal-foto" src="" alt="Foto" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/300x300?text=Foto'">
+            </div>
+            <h3 id="modal-nama" class="text-2xl font-extrabold text-center text-[#0f172a] leading-tight"></h3>
+        </div>
+        
+        <div class="md:w-3/5 flex flex-col h-full max-h-[90vh]">
+            <div class="p-8 overflow-y-auto flex-1 custom-scrollbar">
+                <div class="mb-6">
+                    <h4 class="text-sm font-bold text-[#3b82f6] uppercase tracking-wider mb-3 flex items-center"><i class="fas fa-lightbulb mr-2"></i> Visi</h4>
+                    <p id="modal-visi" class="text-gray-700 italic bg-blue-50 p-4 rounded-xl border border-blue-100"></p>
+                </div>
+                <div>
+                    <h4 class="text-sm font-bold text-[#3b82f6] uppercase tracking-wider mb-3 flex items-center"><i class="fas fa-bullseye mr-2"></i> Misi</h4>
+                    <p id="modal-misi" class="text-gray-700 whitespace-pre-wrap leading-relaxed bg-gray-50 p-4 rounded-xl border border-gray-200"></p>
+                </div>
+            </div>
+            <div id="modal-vote-action" class="p-6 bg-white border-t border-gray-100 flex flex-col sm:flex-row justify-end gap-3 flex-shrink-0">
+                <button onclick="closeModal('modal-candidate')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3.5 px-6 rounded-xl transition">Tutup Detail</button>
+                <button id="btn-confirm-vote" onclick="submitVote()" class="bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold py-3.5 px-8 rounded-xl shadow-lg transition flex items-center justify-center">
+                    <i class="fas fa-check-circle mr-2 text-lg"></i> Coblos Sekarang
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: TAMBAH/EDIT PEMILIH -->
+<div id="modal-form-voter" class="fixed inset-0 z-[2147483650] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 modal-bg" onclick="closeModal('modal-form-voter')"></div>
+    <div class="bg-white rounded-3xl shadow-2xl z-10 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div class="p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="modal-voter-title" class="text-xl font-bold text-[#0f172a]">Form Pemilih</h2>
+                <button onclick="closeModal('modal-form-voter')" class="text-gray-400 hover:text-red-500 text-2xl transition">&times;</button>
+            </div>
+            <form id="form-voter" onsubmit="saveVoter(event)">
+                <input type="hidden" id="form-voter-is-edit" value="false">
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">NISN</label>
+                    <input id="form-voter-nisn" type="text" required class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#3b82f6]/50" placeholder="1234567890">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Nama Lengkap</label>
+                        <input id="form-voter-nama" type="text" required class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#3b82f6]/50" placeholder="Budi Santoso">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Kelas</label>
+                        <input id="form-voter-kelas" type="text" required class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#3b82f6]/50" placeholder="XII IPA 1">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Token / Password</label>
+                    <input id="form-voter-token" type="text" required class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#3b82f6]/50" placeholder="ABCDE">
+                </div>
+                <div class="mb-8">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Role</label>
+                    <select id="form-voter-role" class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#3b82f6]/50">
+                        <option value="pemilih">Pemilih (Siswa)</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeModal('modal-form-voter')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-5 rounded-xl transition">Batal</button>
+                    <button type="submit" class="bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold py-3 px-6 rounded-xl shadow-lg transition">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: TAMBAH/EDIT KANDIDAT -->
+<div id="modal-form-candidate" class="fixed inset-0 z-[2147483650] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 modal-bg" onclick="closeModal('modal-form-candidate')"></div>
+    <div class="bg-white rounded-3xl shadow-2xl z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div class="p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="modal-form-title" class="text-xl font-bold text-[#0f172a]">Form Kandidat</h2>
+                <button onclick="closeModal('modal-form-candidate')" class="text-gray-400 hover:text-red-500 text-2xl transition">&times;</button>
+            </div>
+            <form id="form-candidate" onsubmit="saveCandidate(event)">
+                <input type="hidden" id="form-candidate-id">
+                <div class="grid grid-cols-3 gap-4 mb-4">
+                    <div class="col-span-1">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">No. Urut</label>
+                        <input id="form-no-urut" type="number" required class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#3b82f6]/50">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Nama Paslon</label>
+                        <input id="form-nama" type="text" required class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#3b82f6]/50">
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">URL Foto (Imgur/Drive)</label>
+                    <input id="form-foto" type="url" required class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#3b82f6]/50" placeholder="https://...">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Visi</label>
+                    <textarea id="form-visi" rows="2" required class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#3b82f6]/50"></textarea>
+                </div>
+                <div class="mb-8">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Misi</label>
+                    <textarea id="form-misi" rows="3" required class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#3b82f6]/50"></textarea>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeModal('modal-form-candidate')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-5 rounded-xl transition">Batal</button>
+                    <button type="submit" class="bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold py-3 px-6 rounded-xl shadow-lg transition">Simpan Data</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="loading-overlay" class="fixed inset-0 bg-white/70 z-[2147483651] hidden flex-col items-center justify-center backdrop-blur-sm">
+    <div class="loader mb-4"></div>
+    <h3 id="loading-text" class="text-lg font-bold text-[#0f172a]">Memproses...</h3>
+</div>
+
+<script>
+    const IS_PREVIEW = false; // Ganti ke false saat deploy Blogger
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxHD0ia5CQyS7eQNVwu6MO6GJM9ANWMdmp3l4CGKuow6fUi9wu7rUAwmsCsuEqmJPX7/exec";
+    
+    let currentUser = null; 
+    let candidatesList = [];
+    let votersList = [];
+    let isElectionOpen = true; 
+    let selectedCandidateID = null;
+    let globalSettings = {}; 
+    let html5QrcodeScanner = null;
+
+    // DUMMY DB UNTUK PREVIEW
+    const dummyDB = {
+        settings: { 
+            isElectionOpen: true,
+            schoolName: "SMA Negeri 1 EduDigital",
+            schoolAddress: "Jl. Merdeka No. 100, Jakarta",
+            schoolLogo: "https://upload.wikimedia.org/wikipedia/commons/9/9f/Tut_Wuri_Handayani.svg"
+        },
+        users: [
+            { username: 'admin', nama: 'Administrator', kelas: '-', password: 'admin2026', role: 'admin', statusVote: 'Belum' },
+            { username: 'peserta', nama: 'Budi Santoso', kelas: 'XII IPA 1', password: 'edudigital', role: 'pemilih', statusVote: 'Belum' },
+            { username: '1234567890', nama: 'Rina Marlina', kelas: 'XI IPS 2', password: 'ABCDE', role: 'pemilih', statusVote: 'Sudah' }
+        ],
+        candidates: [
+            { id: 'K001', noUrut: 1, nama: 'Budi & Siti', visi: 'Mewujudkan siswa kreatif berprestasi.', misi: '1. Pensi rutin\n2. Lomba antar kelas', foto: 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80', suara: 45 },
+            { id: 'K002', noUrut: 2, nama: 'Andi & Rina', visi: 'Sekolah bersih dan disiplin tinggi.', misi: '1. Jumat Bersih\n2. Bank sampah', foto: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80', suara: 78 }
+        ]
+    };
+
+    /* ========================================================
+       API SIMULATOR & FETCHER
+       ======================================================== */
+    async function apiCall(action, payload = {}) {
+        if (IS_PREVIEW) return await simulateBackend(action, payload);
+        try {
+            const response = await fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action, payload }),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+            return await response.json();
+        } catch (error) {
+            console.error("API Error:", error);
+            return { success: false, message: "Gagal terhubung ke server." };
+        }
+    }
+
+    function simulateBackend(action, payload) {
+        return new Promise(resolve => {
+            setTimeout(() => {
+                let res = { success: false, message: 'Unknown action' };
+                if (action === 'getSettings') { res = { success: true, settings: dummyDB.settings }; }
+                else if (action === 'login') {
+                    if (!dummyDB.settings.isElectionOpen && payload.username !== 'admin') { res = { success: false, message: 'Pemilihan ditutup.' }; } 
+                    else {
+                        const user = dummyDB.users.find(u => u.username === payload.username && u.password === payload.password);
+                        res = user ? { success: true, user: { username: user.username, nama: user.nama, kelas: user.kelas, role: user.role, statusVote: user.statusVote } } : { success: false, message: 'NISN atau Token salah!' };
+                    }
+                }
+                else if (action === 'getVoters') { res = { success: true, data: dummyDB.users }; }
+                else if (action === 'addVoter') {
+                    if (dummyDB.users.find(u => u.username === payload.username)) res = { success: false, message: 'NISN sudah ada!' };
+                    else { dummyDB.users.push({ username: payload.username, nama: payload.nama, kelas: payload.kelas, password: payload.password, role: payload.role || 'pemilih', statusVote: 'Belum' }); res = { success: true }; }
+                }
+                else if (action === 'editVoter') {
+                    const idx = dummyDB.users.findIndex(u => u.username === payload.username);
+                    if(idx > -1) { 
+                        dummyDB.users[idx].nama = payload.nama;
+                        dummyDB.users[idx].kelas = payload.kelas;
+                        dummyDB.users[idx].password = payload.password; 
+                        dummyDB.users[idx].role = payload.role; 
+                        res = { success: true }; 
+                    }
+                    else res = { success: false, message: 'User tidak ditemukan' };
+                }
+                else if (action === 'deleteVoter') {
+                    if (payload.username === 'admin') res = { success: false, message: 'Admin tidak bisa dihapus!' };
+                    else { dummyDB.users = dummyDB.users.filter(u => u.username !== payload.username); res = { success: true }; }
+                } 
+                else if (action === 'getCandidates') { res = { success: true, data: [...dummyDB.candidates].sort((a,b)=>a.noUrut - b.noUrut), isElectionOpen: dummyDB.settings.isElectionOpen }; } 
+                else if (action === 'vote') {
+                    const u = dummyDB.users.find(u => u.username === payload.username);
+                    const c = dummyDB.candidates.find(c => c.id === payload.candidateId);
+                    if (u && u.statusVote === 'Belum' && c) { u.statusVote = 'Sudah'; c.suara += 1; res = { success: true }; } 
+                    else res = { success: false, message: 'Gagal! Anda mungkin sudah memilih.' };
+                }
+                else if (action === 'addCandidate') {
+                    dummyDB.candidates.push({ id: 'K' + Date.now(), noUrut: parseInt(payload.noUrut), nama: payload.nama, visi: payload.visi, misi: payload.misi, foto: payload.foto, suara: 0 });
+                    res = { success: true };
+                }
+                else if (action === 'editCandidate') {
+                     const idx = dummyDB.candidates.findIndex(c => c.id === payload.id);
+                     if(idx > -1) { dummyDB.candidates[idx] = { ...dummyDB.candidates[idx], ...payload }; res = { success: true }; }
+                }
+                else if (action === 'deleteCandidate') { dummyDB.candidates = dummyDB.candidates.filter(c => c.id !== payload.id); res = { success: true }; }
+                else if (action === 'getResults') { res = { success: true, data: dummyDB.candidates, isElectionOpen: dummyDB.settings.isElectionOpen }; }
+                else if (action === 'toggleElection') { dummyDB.settings.isElectionOpen = !dummyDB.settings.isElectionOpen; res = { success: true, isElectionOpen: dummyDB.settings.isElectionOpen }; }
+                else if (action === 'saveSettings') { dummyDB.settings = {...dummyDB.settings, ...payload}; res = { success: true, settings: dummyDB.settings }; }
+                resolve(res);
+            }, 500);
+        });
+    }
+
+    /* ========================================================
+       INISIALISASI & UTILITAS UI
+       ======================================================== */
+    async function initApp() {
+        if(IS_PREVIEW) {
+            const badge = document.getElementById('preview-badge');
+            if(badge) badge.classList.remove('hidden');
+        }
+        const dateEl = document.getElementById('current-date');
+        if(dateEl) {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            dateEl.innerText = new Date().toLocaleDateString('id-ID', options);
+        }
+        
+        try {
+            await loadGlobalSettings();
+        } catch (e) { console.error("Settings error:", e); }
+        
+        // PENGAMAN (TRY-CATCH) AGAR LOADING PASTI HILANG
+        const loader = document.getElementById('initial-loader');
+        if(loader) loader.classList.add('hidden');
+
+        const savedUser = sessionStorage.getItem('votingUser');
+        if(savedUser) { 
+            currentUser = JSON.parse(savedUser); 
+            renderLayoutBasedOnRole(); 
+        } else { 
+            const viewLogin = document.getElementById('view-login');
+            if(viewLogin) viewLogin.classList.remove('hidden'); 
+        }
+    }
+
+    // Eksekusi secepat mungkin (Anti Macet di Blogger)
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initApp);
+    } else {
+        initApp();
+    }
+    // Backup jika DOMContentLoaded terlewat
+    window.addEventListener('load', initApp);
+
+    function showLoading(txt = "Memproses...") { document.getElementById('loading-text').innerText = txt; document.getElementById('loading-overlay').classList.replace('hidden','flex'); }
+    function hideLoading() { document.getElementById('loading-overlay').classList.replace('flex','hidden'); }
+
+    window.alert = function(msg) {
+        const oldAlert = document.getElementById('custom-alert'); if(oldAlert) oldAlert.remove();
+        const div = document.createElement('div'); div.id = 'custom-alert';
+        div.className = "fixed bottom-6 right-6 bg-[#0f172a] text-white px-6 py-4 rounded-xl shadow-2xl z-[2147483652] flex items-center justify-between gap-4 border-l-4 border-blue-500 transition-all transform hover:scale-105";
+        div.innerHTML = `<span class="font-medium">${msg}</span> <button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>`;
+        document.body.appendChild(div); setTimeout(() => { if(document.getElementById('custom-alert')) div.remove(); }, 4000);
+    }
+    
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    // --- FITUR SCANNER QR CODE ---
+    function openScanner() {
+        document.getElementById('modal-scanner').classList.remove('hidden');
+        if (!html5QrcodeScanner) {
+            html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
+            html5QrcodeScanner.render(onScanSuccess, (err) => {});
+        }
+    }
+
+    function closeScanner() {
+        document.getElementById('modal-scanner').classList.add('hidden');
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.clear().catch(error => { console.error("Failed to clear scanner", error); });
+            html5QrcodeScanner = null;
+        }
+    }
+
+    async function onScanSuccess(decodedText) {
+        closeScanner();
+        const parts = decodedText.split(':');
+        if (parts.length === 2) {
+            const username = parts[0].trim();
+            const password = parts[1].trim();
+            
+            document.getElementById('username').value = username;
+            document.getElementById('password').value = password;
+            
+            showLoading("Memproses QR Code...");
+            const res = await apiCall('login', { username, password });
+            hideLoading();
+
+            if (res.success) {
+                currentUser = res.user;
+                sessionStorage.setItem('votingUser', JSON.stringify(currentUser));
+                renderLayoutBasedOnRole();
+            } else { alert(res.message); }
+        } else {
+            alert("Format QR Code tidak valid / Bukan dari sistem E-Voting.");
+        }
+    }
+
+    function toggleSidebar() {
+        const sb = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        sb.classList.toggle('-translate-x-full');
+        overlay.classList.toggle('hidden');
+    }
+
+    /* ========================================================
+       AUTH & PENGATURAN
+       ======================================================== */
+    async function loadGlobalSettings() {
+        const res = await apiCall('getSettings');
+        if(res.success && res.settings) { 
+            globalSettings = res.settings; 
+            applySchoolIdentity(res.settings); 
+        }
+    }
+
+    function applySchoolIdentity(settings) {
+         if(settings.schoolName) {
+             document.getElementById('login-school-name').innerText = settings.schoolName;
+             document.getElementById('nav-school-name').innerText = settings.schoolName;
+             document.title = "E-Voting - " + settings.schoolName;
+             if(currentUser && currentUser.role==='admin') document.getElementById('setting-school-name').value = settings.schoolName;
+         }
+         if(settings.schoolAddress && currentUser && currentUser.role==='admin') {
+             document.getElementById('setting-school-address').value = settings.schoolAddress;
+         }
+         if(settings.schoolLogo) {
+             document.getElementById('login-logo').src = settings.schoolLogo;
+             document.getElementById('nav-logo').src = settings.schoolLogo;
+             document.getElementById('mobile-nav-logo').src = settings.schoolLogo;
+             if(currentUser && currentUser.role==='admin') document.getElementById('setting-school-logo').value = settings.schoolLogo;
+         }
+    }
+
+    async function handleLogin(e) {
+        e.preventDefault();
+        const u = document.getElementById('username').value.trim();
+        const p = document.getElementById('password').value.trim();
+        if(!u || !p) return alert("Isi NISN dan Token");
+
+        showLoading("Mencoba Masuk...");
+        const res = await apiCall('login', { username: u, password: p });
+        hideLoading();
+
+        if (res.success) {
+            currentUser = res.user;
+            sessionStorage.setItem('votingUser', JSON.stringify(currentUser));
+            renderLayoutBasedOnRole();
+        } else alert(res.message);
+    }
+
+    function logout() {
+        currentUser = null; sessionStorage.removeItem('votingUser');
+        document.getElementById('loginForm').reset();
+        document.getElementById('app-layout').classList.replace('flex','hidden');
+        document.getElementById('view-login').classList.remove('hidden');
+    }
+
+    function renderLayoutBasedOnRole() {
+        document.getElementById('view-login').classList.add('hidden');
+        document.getElementById('app-layout').classList.replace('hidden','flex');
+        
+        // Atur Nama & Kelas di Sidebar
+        document.getElementById('nav-user-name').innerText = currentUser.nama || "User";
+        document.getElementById('nav-user-class').innerText = currentUser.kelas || "-";
+        
+        const badge = document.getElementById('nav-role-badge');
+        badge.innerText = currentUser.role;
+        badge.className = currentUser.role === 'admin' 
+            ? "mt-2 text-xs py-1 px-3 rounded-full font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30 uppercase tracking-wider"
+            : "mt-2 text-xs py-1 px-3 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase tracking-wider";
+
+        if (currentUser.role === 'admin') {
+            document.getElementById('menu-admin').classList.remove('hidden');
+            document.getElementById('menu-voter').classList.add('hidden');
+            switchMenu('manage');
+        } else {
+            document.getElementById('menu-voter').classList.remove('hidden');
+            document.getElementById('menu-admin').classList.add('hidden');
+            switchMenu('dashboard-voter');
+        }
+        
+        apiCall('getSettings').then(r => { if(r.success) { globalSettings = r.settings; applySchoolIdentity(r.settings); } });
+    }
+
+    function switchMenu(menu) {
+        ['view-voter', 'view-manage', 'view-voters', 'view-results', 'view-settings'].forEach(id => {
+            document.getElementById(id).classList.add('hidden');
+        });
+        
+        document.querySelectorAll('.sidebar-menu').forEach(el => {
+            el.classList.remove('bg-[#3b82f6]', 'text-white', 'shadow-md', 'font-bold');
+            el.classList.add('hover:bg-white/10', 'text-gray-300');
+        });
+
+        const activeBtn = document.getElementById('menu-item-' + (menu === 'dashboard-voter' ? 'dashboard-voter' : menu));
+        if(activeBtn) {
+            activeBtn.classList.remove('hover:bg-white/10', 'text-gray-300');
+            activeBtn.classList.add('bg-[#3b82f6]', 'text-white', 'shadow-md', 'shadow-blue-900/50', 'font-bold');
+        }
+
+        const titles = {
+            'dashboard-voter': { t: 'Bilik Suara', s: 'Tentukan pilihan terbaik untuk masa depan.' },
+            'manage': { t: 'Manajemen Kandidat', s: 'Atur data pasangan calon ketua.' },
+            'voters': { t: 'Data Pemilih', s: 'Daftar Pemilih Tetap (DPT) & Cetak Kartu.' },
+            'results': { t: 'Hasil Suara', s: 'Pantau perolehan suara secara langsung.' },
+            'settings': { t: 'Pengaturan Sistem', s: 'Konfigurasi identitas dan sesi pemilihan.' }
+        };
+        document.getElementById('page-title').innerText = titles[menu].t;
+        document.getElementById('page-subtitle').innerText = titles[menu].s;
+        document.getElementById('mobile-header-title').innerText = titles[menu].t;
+
+        const sb = document.getElementById('sidebar');
+        if(!sb.classList.contains('-translate-x-full')) toggleSidebar();
+
+        if(menu === 'dashboard-voter') loadVoterDashboard();
+        else if(menu === 'manage') { document.getElementById('view-manage').classList.remove('hidden'); loadAdminManage(); }
+        else if(menu === 'voters') { document.getElementById('view-voters').classList.remove('hidden'); loadAdminVoters(); }
+        else if(menu === 'results') { document.getElementById('view-results').classList.remove('hidden'); loadAdminResults(); }
+        else if(menu === 'settings') { document.getElementById('view-settings').classList.remove('hidden'); updateSettingsUI(); }
+    }
+
+    /* ========================================================
+       MODUL: PEMILIH (VOTER)
+       ======================================================== */
+    async function loadVoterDashboard() {
+        document.getElementById('view-voter').classList.remove('hidden');
+        showLoading("Memuat Kandidat...");
+        const res = await apiCall('getCandidates'); hideLoading();
+        if (res.success) {
+            candidatesList = res.data; isElectionOpen = res.isElectionOpen;
+            renderVoterAlert(); renderVoterCandidates();
+        } else alert("Gagal memuat: " + res.message);
+    }
+
+    function renderVoterAlert() {
+        const box = document.getElementById('voter-status-alert');
+        if (currentUser.statusVote === 'Sudah') {
+            box.className = "mb-8 p-6 rounded-2xl text-center shadow-sm border bg-[#f0fdf4] text-[#166534] border-green-200";
+            box.innerHTML = '<i class="fas fa-check-circle text-4xl mb-3 block"></i> <h3 class="text-xl font-bold">Terima Kasih!</h3><p>Anda telah memberikan hak suara.</p>';
+        } else if (!isElectionOpen) {
+            box.className = "mb-8 p-6 rounded-2xl text-center shadow-sm border bg-[#fef2f2] text-[#991b1b] border-red-200";
+            box.innerHTML = '<i class="fas fa-lock text-4xl mb-3 block"></i> <h3 class="text-xl font-bold">Sesi Ditutup</h3><p>Pemilihan saat ini sedang tidak aktif.</p>';
+        } else {
+            box.className = "mb-8 p-6 rounded-2xl shadow-sm border bg-white border-blue-100 flex items-center gap-4";
+            box.innerHTML = '<div class="w-12 h-12 bg-blue-50 text-[#3b82f6] rounded-full flex items-center justify-center text-xl shrink-0"><i class="fas fa-info-circle"></i></div> <div><h3 class="text-lg font-bold text-[#0f172a]">Perhatian</h3><p class="text-gray-500 text-sm">Pelajari profil kandidat. Pilihan hanya dapat dilakukan 1 (satu) kali.</p></div>';
+        }
+    }
+
+    function renderVoterCandidates() {
+        const grid = document.getElementById('voter-candidate-grid'); grid.innerHTML = '';
+        candidatesList.forEach(cand => {
+            grid.innerHTML += `
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col group">
+                    <div class="relative h-56 overflow-hidden bg-gray-100 p-2">
+                        <img src="${cand.foto}" class="w-full h-full object-cover rounded-2xl group-hover:scale-105 transition duration-500" onerror="this.src='https://via.placeholder.com/400x300?text=Foto'">
+                        <div class="absolute top-4 left-4 bg-white/90 backdrop-blur text-[#0f172a] font-extrabold w-10 h-10 flex items-center justify-center rounded-xl text-lg shadow-sm">#${cand.noUrut}</div>
+                    </div>
+                    <div class="p-6 flex-grow flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-xl font-extrabold text-[#0f172a] mb-2">${cand.nama}</h3>
+                            <p class="text-gray-500 text-sm line-clamp-2">${cand.visi}</p>
+                        </div>
+                        <button onclick="openCandidateDetail('${cand.id}')" class="mt-6 w-full bg-blue-50 text-[#3b82f6] hover:bg-[#3b82f6] hover:text-white font-bold py-3 px-4 rounded-xl transition duration-300">
+                            Lihat Detail & Pilih
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    function openCandidateDetail(id) {
+        const c = candidatesList.find(x => x.id === id); if(!c) return;
+        selectedCandidateID = id;
+        document.getElementById('modal-no-urut').innerText = c.noUrut;
+        document.getElementById('modal-nama').innerText = c.nama;
+        document.getElementById('modal-foto').src = c.foto;
+        document.getElementById('modal-visi').innerText = c.visi;
+        document.getElementById('modal-misi').innerText = c.misi;
+
+        const btnVote = document.getElementById('btn-confirm-vote');
+        btnVote.style.display = (currentUser.role === 'admin' || currentUser.statusVote === 'Sudah' || !isElectionOpen) ? 'none' : 'flex';
+        document.getElementById('modal-candidate').classList.remove('hidden');
+    }
+
+    async function submitVote() {
+        if(!selectedCandidateID) return;
+        showLoading("Mencatat Suara...");
+        const res = await apiCall('vote', { username: currentUser.username, candidateId: selectedCandidateID });
+        hideLoading();
+        if (res.success) {
+            closeModal('modal-candidate');
+            currentUser.statusVote = 'Sudah'; sessionStorage.setItem('votingUser', JSON.stringify(currentUser));
+            renderVoterAlert();
+            alert("Suara berhasil direkam. Terima kasih!");
+        } else alert(res.message);
+    }
+
+    /* ========================================================
+       MODUL: ADMIN MANAGE KANDIDAT
+       ======================================================== */
+    async function loadAdminManage() {
+        showLoading("Memuat Kandidat...");
+        const res = await apiCall('getCandidates'); hideLoading();
+        if (res.success) {
+            candidatesList = res.data;
+            const tbody = document.getElementById('admin-candidate-list'); tbody.innerHTML = '';
+            if(candidatesList.length === 0) return tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-8 text-center text-gray-400">Belum ada kandidat</td></tr>`;
+            candidatesList.forEach(c => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 transition border-b border-gray-100 last:border-0">
+                        <td class="px-6 py-4 w-16 align-middle">
+                            <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center font-bold text-lg">${c.noUrut}</div>
+                        </td>
+                        <td class="px-6 py-4 align-middle">
+                            <div class="flex items-center gap-4">
+                                <img src="${c.foto}" class="h-12 w-12 rounded-xl object-cover shadow-sm border border-gray-200" onerror="this.src='https://via.placeholder.com/150?text=Foto'">
+                                <div class="font-bold text-[#0f172a] text-base whitespace-nowrap">${c.nama}</div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 align-middle text-right">
+                            <div class="flex justify-end items-center gap-2">
+                                <button onclick="openCandidateDetail('${c.id}')" class="text-blue-500 bg-blue-50 hover:bg-blue-100 p-2.5 rounded-xl transition" title="Lihat"><i class="fas fa-eye"></i></button>
+                                <button onclick="openEditCandidateModal('${c.id}')" class="text-orange-500 bg-orange-50 hover:bg-orange-100 p-2.5 rounded-xl transition" title="Edit"><i class="fas fa-edit"></i></button>
+                                <button onclick="adminDeleteCandidate('${c.id}')" class="text-red-500 bg-red-50 hover:bg-red-100 p-2.5 rounded-xl transition" title="Hapus"><i class="fas fa-trash-alt"></i></button>
+                            </div>
+                        </td>
+                    </tr>`;
+            });
+        }
+    }
+
+    function openAddCandidateModal() {
+        document.getElementById('form-candidate').reset();
+        document.getElementById('form-candidate-id').value = '';
+        document.getElementById('modal-form-title').innerText = "Tambah Kandidat";
+        document.getElementById('modal-form-candidate').classList.remove('hidden');
+    }
+
+    function openEditCandidateModal(id) {
+        const c = candidatesList.find(x => x.id === id); if(!c) return;
+        document.getElementById('form-candidate-id').value = c.id;
+        document.getElementById('form-no-urut').value = c.noUrut;
+        document.getElementById('form-nama').value = c.nama;
+        document.getElementById('form-foto').value = c.foto;
+        document.getElementById('form-visi').value = c.visi;
+        document.getElementById('form-misi').value = c.misi;
+        document.getElementById('modal-form-title').innerText = "Edit Kandidat";
+        document.getElementById('modal-form-candidate').classList.remove('hidden');
+    }
+
+    async function saveCandidate(e) {
+        e.preventDefault();
+        const data = {
+            id: document.getElementById('form-candidate-id').value, noUrut: document.getElementById('form-no-urut').value,
+            nama: document.getElementById('form-nama').value, foto: document.getElementById('form-foto').value,
+            visi: document.getElementById('form-visi').value, misi: document.getElementById('form-misi').value
+        };
+        showLoading("Menyimpan...");
+        const res = await apiCall(data.id ? 'editCandidate' : 'addCandidate', data);
+        hideLoading();
+        if (res.success) { closeModal('modal-form-candidate'); loadAdminManage(); alert("Kandidat disimpan!"); } else alert(res.message);
+    }
+
+    async function adminDeleteCandidate(id) {
+        if(confirm("Yakin ingin menghapus kandidat ini?")){
+            showLoading("Menghapus..."); const res = await apiCall('deleteCandidate', { id }); hideLoading();
+            if(res.success) { loadAdminManage(); alert("Kandidat dihapus."); } else alert(res.message);
+        }
+    }
+
+    /* ========================================================
+       MODUL: ADMIN DATA PEMILIH & CETAK KARTU TAB BARU
+       ======================================================== */
+    async function loadAdminVoters() {
+        showLoading("Memuat DPT..."); const res = await apiCall('getVoters'); hideLoading();
+        if (res.success) {
+            votersList = res.data;
+            const tbody = document.getElementById('admin-voter-list'); tbody.innerHTML = '';
+            if(res.data.length === 0) return tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">Belum ada pemilih</td></tr>`;
+            res.data.forEach(v => {
+                const sCol = v.statusVote === 'Sudah' ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600';
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 font-bold text-[#0f172a]">${v.username}</td>
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-[#0f172a]">${v.nama || '-'}</div>
+                            <div class="text-xs text-gray-500">${v.kelas || '-'}</div>
+                        </td>
+                        <td class="px-6 py-4 text-gray-500 font-mono text-sm">${v.password}</td>
+                        <td class="px-6 py-4"><span class="px-3 py-1 text-xs font-bold rounded-lg bg-gray-100 text-gray-600 uppercase">${v.role}</span></td>
+                        <td class="px-6 py-4 text-center"><span class="px-3 py-1 text-xs font-bold rounded-lg ${sCol}">${v.statusVote}</span></td>
+                        <td class="px-6 py-4 text-center space-x-1 flex justify-center">
+                            ${v.role === 'pemilih' ? `<button onclick="printSingleCard('${v.username}')" class="text-indigo-500 bg-indigo-50 hover:bg-indigo-100 p-2 rounded-lg transition" title="Cetak Kartu"><i class="fas fa-print"></i></button>` : ''}
+                            <button onclick="openEditVoterModal('${v.username}')" class="text-orange-500 bg-orange-50 hover:bg-orange-100 p-2 rounded-lg transition ml-1" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button onclick="adminDeleteVoter('${v.username}')" class="text-red-500 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition ml-1" title="Hapus"><i class="fas fa-trash-alt"></i></button>
+                        </td>
+                    </tr>`;
+            });
+        }
+    }
+
+    function openAddVoterModal() { 
+        document.getElementById('form-voter').reset(); 
+        document.getElementById('modal-voter-title').innerText = "Tambah Pemilih";
+        document.getElementById('form-voter-is-edit').value = "false";
+        document.getElementById('form-voter-nisn').readOnly = false;
+        document.getElementById('form-voter-nisn').classList.remove('bg-gray-200');
+        document.getElementById('modal-form-voter').classList.remove('hidden'); 
+    }
+    
+    function openEditVoterModal(username) {
+        // PERBAIKAN: Mengkonversi x.username dan username ke String agar tipe data cocok
+        const v = votersList.find(x => String(x.username) === String(username)); 
+        if(!v) return;
+        
+        document.getElementById('modal-voter-title').innerText = "Edit Pemilih";
+        document.getElementById('form-voter-is-edit').value = "true";
+        document.getElementById('form-voter-nisn').value = v.username;
+        document.getElementById('form-voter-nisn').readOnly = true; // NISN tidak boleh diedit
+        document.getElementById('form-voter-nisn').classList.add('bg-gray-200');
+        
+        document.getElementById('form-voter-nama').value = v.nama || '';
+        document.getElementById('form-voter-kelas').value = v.kelas || '';
+        document.getElementById('form-voter-token').value = v.password;
+        document.getElementById('form-voter-role').value = v.role;
+        document.getElementById('modal-form-voter').classList.remove('hidden');
+    }
+
+    async function saveVoter(e) {
+        e.preventDefault(); showLoading("Menyimpan...");
+        const isEdit = document.getElementById('form-voter-is-edit').value === "true";
+        const action = isEdit ? 'editVoter' : 'addVoter';
+        const res = await apiCall(action, {
+            username: document.getElementById('form-voter-nisn').value, 
+            nama: document.getElementById('form-voter-nama').value, 
+            kelas: document.getElementById('form-voter-kelas').value, 
+            password: document.getElementById('form-voter-token').value, 
+            role: document.getElementById('form-voter-role').value
+        });
+        hideLoading();
+        if (res.success) { closeModal('modal-form-voter'); loadAdminVoters(); alert(isEdit ? "Pemilih diperbarui!" : "Pemilih ditambahkan!"); } else alert(res.message);
+    }
+    
+    async function adminDeleteVoter(usr) {
+        if(confirm("Hapus data pemilih ini?")){
+            showLoading("Menghapus..."); const res = await apiCall('deleteVoter', { username: usr }); hideLoading();
+            if(res.success) { loadAdminVoters(); alert("Pemilih dihapus."); } else alert(res.message);
+        }
+    }
+
+    // --- FUNGSI CETAK KARTU HORIZONTAL PRESISI ---
+    function buildCardHTML(voter) {
+        const sName = globalSettings.schoolName || "E-Voting OSIS";
+        let sLogo = globalSettings.schoolLogo || "https://upload.wikimedia.org/wikipedia/commons/9/9f/Tut_Wuri_Handayani.svg";
+        const qrData = encodeURIComponent(`${voter.username}:${voter.password}`);
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrData}`;
+        const nNama = voter.nama || "-";
+        const nKelas = voter.kelas || "-";
+
+        return `
+            <div class="print-card">
+                <div class="card-left">
+                    <div class="card-header">
+                        <img src="${sLogo}" alt="Logo" class="logo" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/9/9f/Tut_Wuri_Handayani.svg'">
+                        <div class="header-text">
+                            <h2>KARTU PEMILIH E-VOTING</h2>
+                            <p class="school-name">${sName}</p>
+                        </div>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="info-group">
+                        <p>NAMA & KELAS:</p>
+                        <div class="data-box" style="font-size: 10px;">${nNama} (${nKelas})</div>
+                    </div>
+                    <div class="info-group flex-row-custom">
+                         <div>
+                            <p>NISN:</p>
+                            <div class="data-box">${voter.username}</div>
+                         </div>
+                         <div>
+                            <p>TOKEN:</p>
+                            <div class="data-box">${voter.password}</div>
+                         </div>
+                    </div>
+                </div>
+                <div class="card-right">
+                    <img src="${qrUrl}" alt="QR Code">
+                    <span class="qr-text">Scan Login</span>
+                </div>
+            </div>
+        `;
+    }
+
+    function printToNewTab(htmlContent) {
+        const printWindow = window.open('', '_blank');
+        if(!printWindow) { alert("Gagal membuka tab baru! Harap izinkan Pop-up (Izinkan/Allow Pop-ups) di browser Anda untuk situs ini."); return; }
+
+        printWindow.document.write(`
+            <html>
+            <head>
+                <title>Cetak Kartu Pemilih</title>
+                <style>
+                    @page { size: A4; margin: 15mm; }
+                    body { 
+                        font-family: 'Arial', sans-serif; 
+                        background: white; margin: 0; padding: 0; 
+                        -webkit-print-color-adjust: exact; print-color-adjust: exact; 
+                        display: flex; flex-wrap: wrap; gap: 15px;
+                        align-items: flex-start;
+                        align-content: flex-start;
+                    }
+                    
+                    .print-card { 
+                        width: 9cm; height: 5.5cm;
+                        border: 2px solid #0f172a; border-radius: 8px; 
+                        background-color: #ffffff; 
+                        box-sizing: border-box; 
+                        page-break-inside: avoid; break-inside: avoid;
+                        display: flex; flex-direction: row; 
+                        overflow: hidden; margin-bottom: 0;
+                    }
+                    
+                    .card-left { 
+                        flex: 1; padding: 10px; display: flex; flex-direction: column; justify-content: center;
+                    }
+                    .card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+                    .card-header .logo { width: 30px; height: 30px; object-fit: contain; }
+                    .card-header .header-text { display: flex; flex-direction: column; }
+                    .card-header h2 { font-size: 10px; font-weight: 900; margin: 0; color: #0f172a; }
+                    .card-header .school-name { font-size: 9px; font-weight: bold; color: #3b82f6; margin: 0; max-width: 4cm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                    
+                    .divider { border-top: 1px dashed #cbd5e1; margin: 5px 0; }
+                    
+                    .info-group { margin-bottom: 5px; }
+                    .info-group.flex-row-custom { display:flex; gap: 8px; }
+                    .info-group:last-child { margin-bottom: 0; }
+                    .info-group p { font-size: 7px; margin: 0 0 2px 0; color: #64748b; font-weight: bold; }
+                    .info-group .data-box { background: #f1f5f9; padding: 3px 6px; border-radius: 4px; font-family: monospace; font-weight: bold; font-size: 11px; margin: 0; color: #000; letter-spacing: 0.5px; display: inline-block; border: 1px solid #e2e8f0; }
+                    
+                    .card-right { 
+                        width: 3.2cm; padding: 10px; 
+                        border-left: 1px dashed #cbd5e1; 
+                        display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                        background-color: #fafafa;
+                    }
+                    .card-right img { width: 2.2cm; height: 2.2cm; background: white; padding: 2px; }
+                    .card-right .qr-text { font-size: 7px; font-weight: bold; margin-top: 6px; color: #64748b; background: #e2e8f0; padding: 2px 6px; border-radius: 10px; }
+                </style>
+            </head>
+            <body>
+                ${htmlContent}
+                <script>
+                    window.onload = function() { setTimeout(function(){ window.print(); window.close(); }, 1200); }
+                ${'</scr' + 'ipt>'}
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    }
+
+    function printSingleCard(username) {
+        // PERBAIKAN: Mengkonversi v.username ke String
+        const voter = votersList.find(v => String(v.username) === String(username));
+        if(!voter) return;
+        printToNewTab(buildCardHTML(voter));
+    }
+
+    function printAllVoterCards() {
+        const voters = votersList.filter(v => v.role === 'pemilih');
+        if(voters.length === 0) return alert("Belum ada data pemilih siswa.");
+        let allHtml = "";
+        voters.forEach(v => { allHtml += buildCardHTML(v); });
+        printToNewTab(allHtml);
+    }
+
+    /* ========================================================
+       MODUL: ADMIN HASIL SUARA & PENGATURAN
+       ======================================================== */
+    async function loadAdminResults() {
+        showLoading("Mengambil Data..."); const res = await apiCall('getResults'); hideLoading();
+        if (res.success) {
+            isElectionOpen = res.isElectionOpen; updateSettingsUI();
+            let total = 0; res.data.forEach(c => total += parseInt(c.suara || 0));
+            document.getElementById('stat-total-votes').innerText = total;
+            
+            const cont = document.getElementById('admin-results-container'); cont.innerHTML = '';
+            const sorted = [...res.data].sort((a,b) => b.suara - a.suara);
+            
+            sorted.forEach(c => {
+                const pct = total === 0 ? 0 : Math.round((c.suara / total) * 100);
+                cont.innerHTML += `
+                    <div>
+                        <div class="flex justify-between items-end mb-2">
+                            <div class="flex items-center gap-3">
+                                <img src="${c.foto}" class="w-10 h-10 rounded-full object-cover shadow-sm border border-gray-200" onerror="this.src='https://via.placeholder.com/150'">
+                                <span class="font-bold text-[#0f172a]">#${c.noUrut} ${c.nama}</span>
+                            </div>
+                            <span class="font-extrabold text-[#3b82f6] text-lg">${c.suara} <span class="text-sm text-gray-400 font-medium ml-1">Suara (${pct}%)</span></span>
+                        </div>
+                        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${pct}%"></div></div>
+                    </div>`;
+            });
+        }
+    }
+
+    function updateSettingsUI() {
+        const btn = document.getElementById('btn-toggle-election');
+        if (isElectionOpen) { btn.innerText = "TUTUP AKSES PEMILIHAN"; btn.className = "px-6 py-3 rounded-xl font-bold text-white transition shadow-lg w-full md:w-auto bg-red-500 hover:bg-red-600"; } 
+        else { btn.innerText = "BUKA AKSES PEMILIHAN"; btn.className = "px-6 py-3 rounded-xl font-bold text-white transition shadow-lg w-full md:w-auto bg-green-500 hover:bg-green-600"; }
+    }
+
+    async function toggleElectionStatus() {
+        if(confirm(isElectionOpen ? "Tutup sesi pemilihan ini?" : "Buka kembali sesi pemilihan?")) {
+            showLoading("Mengubah Status..."); const res = await apiCall('toggleElection'); hideLoading();
+            if (res.success) { isElectionOpen = res.isElectionOpen; updateSettingsUI(); alert(isElectionOpen ? "Pemilihan DIBUKA" : "Pemilihan DITUTUP"); }
+        }
+    }
+
+    async function saveSchoolIdentity(e) {
+        e.preventDefault(); showLoading("Menyimpan...");
+        const res = await apiCall('saveSettings', {
+            schoolName: document.getElementById('setting-school-name').value, schoolAddress: document.getElementById('setting-school-address').value, schoolLogo: document.getElementById('setting-school-logo').value
+        });
+        hideLoading();
+        if (res.success) { 
+            globalSettings = res.settings; applySchoolIdentity(res.settings); alert("Identitas sekolah disimpan!"); 
+        } else alert(res.message);
+    }
+</script>
+</body>
+</html>
+
